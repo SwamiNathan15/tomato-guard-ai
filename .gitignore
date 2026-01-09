@@ -1,0 +1,14 @@
+# Ignore training files
+ai_training/
+Tomato_dataset/
+
+# Ignore uploaded images
+static/uploads/*
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+.env
