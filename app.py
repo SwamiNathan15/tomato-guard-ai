@@ -4,6 +4,10 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# ---------------- CONFIG ----------------
+UPLOAD_FOLDER = "/tmp"  # ✅ Render-safe writable directory
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 # ---------------- SOLUTIONS DATABASE ----------------
 solutions_db = {
     "Tomato_Bacterial_spot": [
@@ -63,7 +67,7 @@ solutions_db = {
 def index():
     return render_template("index.html")
 
-# ---------------- UPLOAD (GET REDIRECT) ----------------
+# ---------------- UPLOAD REDIRECT (GET) ----------------
 @app.route("/upload", methods=["GET"])
 def upload_redirect():
     return redirect("/")
@@ -71,39 +75,47 @@ def upload_redirect():
 # ---------------- UPLOAD (POST) ----------------
 @app.route("/upload", methods=["POST"])
 def upload():
-    if "image" not in request.files:
-        return redirect("/")
+    try:
+        if "image" not in request.files:
+            return redirect("/")
 
-    image = request.files["image"]
-    if image.filename == "":
-        return redirect("/")
+        image = request.files["image"]
+        if image.filename == "":
+            return redirect("/")
 
-    filename = secure_filename(image.filename)
-    image_path = os.path.join("static", "uploads", filename)
-    os.makedirs("static/uploads", exist_ok=True)
-    image.save(image_path)
+        filename = secure_filename(image.filename)
 
-    image_url = "/" + image_path.replace("\\", "/")
+        # ✅ Save image in /tmp
+        image_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        image.save(image_path)
 
-    # 🔴 TEMP SIMULATION (replace with model later)
-    predicted_class = "Tomato_Septoria_leaf_spot"
-    confidence = 94.24
+        # This path is only for preview, not real storage
+        image_url = f"/static/uploads/{filename}"
 
-    solutions = solutions_db.get(
-        predicted_class,
-        ["Consult an agricultural expert."]
-    )
+        # 🔴 TEMP SIMULATION (replace with model later)
+        predicted_class = "Tomato_Septoria_leaf_spot"
+        confidence = 94.24
 
-    return render_template(
-        "index.html",
-        result=predicted_class,
-        confidence=f"{confidence:.2f}%",
-        danger="🟠 ACT SOON",
-        solution=solutions,
-        image_url=image_url
-    )
+        solutions = solutions_db.get(
+            predicted_class,
+            ["Consult an agricultural expert."]
+        )
 
-# ---------------- RUN ----------------
+        return render_template(
+            "index.html",
+            result=predicted_class,
+            confidence=f"{confidence:.2f}%",
+            danger="🟠 ACT SOON",
+            solution=solutions,
+            image_url=image_url
+        )
+
+    except Exception as e:
+        print("ERROR:", e)
+        return "Internal Server Error", 500
+
+
+# ---------------- RUN (Render Safe) ----------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
